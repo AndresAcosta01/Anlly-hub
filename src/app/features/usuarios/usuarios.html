@@ -1,0 +1,67 @@
+<section class="degradado-hub aparecer relative overflow-hidden rounded-[2rem] px-6 py-10 sm:px-10">
+  <p class="text-xs font-bold tracking-widest uppercase">Administración</p>
+  <h1 class="mt-1 flex items-center gap-3 text-3xl font-extrabold sm:text-4xl">
+    <app-icono nombre="usuarios" [tamano]="32" /> Usuarios
+  </h1>
+  <p class="mt-2 max-w-2xl text-negro/80">Define quién es administradora y quién es supervisor.</p>
+</section>
+
+<div class="mt-8 grid gap-6 xl:grid-cols-3">
+  <section class="tarjeta aparecer overflow-hidden xl:col-span-2">
+    @if (cargando()) {
+      <div class="space-y-3 p-5" aria-busy="true">
+        @for (i of [1, 2, 3]; track i) { <div class="h-12 animate-pulse rounded-xl bg-morado-suave"></div> }
+      </div>
+    } @else {
+      <div class="overflow-x-auto">
+        <table class="tabla">
+          <thead>
+            <tr><th scope="col">Nombre</th><th scope="col">Correo</th><th scope="col">Rol</th></tr>
+          </thead>
+          <tbody>
+            @for (p of perfiles(); track p.id) {
+              <tr>
+                <td>
+                  <label class="sr-only" [for]="'nombre-' + p.id">Nombre de {{ p.correo }}</label>
+                  <input
+                    [id]="'nombre-' + p.id"
+                    class="w-full min-w-40"
+                    [value]="p.nombre"
+                    placeholder="Sin nombre"
+                    (change)="actualizar(p, { nombre: $any($event.target).value.trim() })"
+                  />
+                </td>
+                <td class="text-gris">{{ p.correo }}</td>
+                <td>
+                  @if (p.id === auth.perfil()?.id) {
+                    <span class="chip bg-morado"><app-icono nombre="escudo" [tamano]="12" /> {{ p.rol }} (tú)</span>
+                  } @else {
+                    <label class="sr-only" [for]="'rol-' + p.id">Rol de {{ p.correo }}</label>
+                    <select [id]="'rol-' + p.id" [value]="p.rol" (change)="cambiarRol(p, $any($event.target).value)">
+                      <option value="admin">Admin</option>
+                      <option value="supervisor">Supervisor</option>
+                    </select>
+                  }
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  </section>
+
+  <aside class="tarjeta aparecer space-y-4 p-6">
+    <h2 class="text-lg font-extrabold">¿Cómo agregar a alguien?</h2>
+    <ol class="list-decimal space-y-2 pl-5 text-sm">
+      <li>Entra a tu proyecto en <b>supabase.com</b> → Authentication → Users.</li>
+      <li>Pulsa <b>Add user → Create new user</b>, escribe el correo y una contraseña temporal, y marca <i>Auto Confirm User</i>.</li>
+      <li>Comparte la contraseña con la persona. Aparecerá aquí como <b>supervisor</b>.</li>
+      <li>Si debe ver Nómina y Horarios, cámbiale el rol a <b>admin</b>.</li>
+    </ol>
+    <div class="space-y-2 rounded-2xl bg-fondo p-4 text-sm">
+      <p><span class="chip bg-morado">Admin</span> Nómina, Horarios y Usuarios.</p>
+      <p><span class="chip bg-azul">Supervisor</span> Herramientas de supervisión (próximamente).</p>
+    </div>
+  </aside>
+</div>

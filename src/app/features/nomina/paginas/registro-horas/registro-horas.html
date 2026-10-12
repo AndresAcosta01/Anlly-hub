@@ -1,0 +1,169 @@
+<!-- Captura rápida -->
+<section class="tarjeta aparecer p-5 sm:p-6">
+  <div class="flex flex-wrap items-center justify-between gap-3">
+    <div>
+      <h2 class="text-xl font-extrabold">{{ editandoId() ? 'Editar tramo' : 'Registrar tramo' }}</h2>
+      <p class="text-sm text-gris">Si hubo almuerzo, registra dos tramos: antes y después. Enter guarda y deja todo listo para el siguiente.</p>
+    </div>
+    <div class="flex flex-wrap gap-2">
+      <button type="button" class="btn btn-secundario" (click)="descargarPlantilla()">
+        <app-icono nombre="bajar" [tamano]="16" /> Plantilla
+      </button>
+      <button type="button" class="btn btn-suave" (click)="importando.set(true)">
+        <app-icono nombre="excel" [tamano]="16" /> Importar Excel
+      </button>
+    </div>
+  </div>
+
+  @if (!cargando() && !agentes().length) {
+    <p class="mt-4 flex items-center gap-2 rounded-2xl bg-alerta px-4 py-3 text-sm font-medium" role="alert">
+      <app-icono nombre="alerta" [tamano]="18" /> Primero crea agentes en la pestaña Agentes.
+    </p>
+  }
+
+  <form class="mt-5 grid gap-4 md:grid-cols-12" (ngSubmit)="guardar()">
+    <div class="space-y-1.5 md:col-span-4">
+      <label for="r-agente">Agente</label>
+      <select id="r-agente" name="agente" class="w-full" [ngModel]="agenteId()" (ngModelChange)="agenteId.set($event)" required>
+        <option value="" disabled>Elige un agente</option>
+        @for (a of agentesActivos(); track a.id) {
+          <option [value]="a.id">{{ a.nombre }} · {{ a.documento }}</option>
+        }
+      </select>
+    </div>
+    <div class="space-y-1.5 md:col-span-2">
+      <label for="r-fecha">Fecha</label>
+      <input id="r-fecha" name="fecha" type="date" class="w-full" [ngModel]="fecha()" (ngModelChange)="fecha.set($event)" required />
+    </div>
+    <div class="space-y-1.5 md:col-span-2">
+      <label for="r-entrada">Entrada</label>
+      <input #campoEntrada id="r-entrada" name="entrada" type="time" class="w-full" [ngModel]="entrada()" (ngModelChange)="entrada.set($event)" required />
+    </div>
+    <div class="space-y-1.5 md:col-span-2">
+      <label for="r-salida">Salida</label>
+      <input id="r-salida" name="salida" type="time" class="w-full" [ngModel]="salida()" (ngModelChange)="salida.set($event)" required />
+    </div>
+    <div class="flex items-end gap-2 md:col-span-2">
+      <button type="submit" class="btn btn-primario flex-1 py-2.5" [disabled]="guardando()">
+        <app-icono [nombre]="editandoId() ? 'ok' : 'mas'" [tamano]="16" /> {{ editandoId() ? 'Actualizar' : 'Guardar' }}
+      </button>
+      @if (editandoId()) {
+        <button type="button" class="btn btn-secundario px-3 py-2.5" (click)="cancelarEdicion()" aria-label="Cancelar edición">
+          <app-icono nombre="cerrar" [tamano]="16" />
+        </button>
+      }
+    </div>
+    <div class="space-y-1.5 md:col-span-12">
+      <label for="r-obs">Observación (opcional)</label>
+      <input id="r-obs" name="obs" class="w-full" [ngModel]="observacion()" (ngModelChange)="observacion.set($event)" />
+    </div>
+  </form>
+
+  <!-- Vista previa del reparto -->
+  <div class="mt-4 min-h-12 rounded-2xl bg-fondo p-3" aria-live="polite">
+    @if (vistaPrevia(); as b) {
+      <div class="flex flex-wrap items-center gap-2 text-sm">
+        <span class="font-bold">Reparto:</span>
+        @for (t of tipos; track t) {
+          @if (b[t]) {
+            <span class="chip {{ colorTipo[t] }}">{{ b[t] | horas }} {{ nombreTipo[t].toLowerCase() }}</span>
+          }
+        }
+        @if (tramoForm(); as t) {
+          <span class="text-gris">· total {{ duracion(t) | horas }}</span>
+          @if (cruzaMedianoche(t)) { <span class="chip bg-azul-suave"><app-icono nombre="luna" [tamano]="12" /> termina al día siguiente</span> }
+        }
+      </div>
+      <p class="mt-1 text-xs text-gris">Las horas extra se calculan en el Resumen, sumando el día y la semana del agente.</p>
+    } @else {
+      <p class="text-sm text-gris">Escribe entrada y salida para ver cómo se reparten las horas.</p>
+    }
+  </div>
+</section>
+
+<!-- Listado -->
+<section class="tarjeta aparecer mt-6 overflow-hidden">
+  <div class="flex flex-wrap items-end gap-3 border-b border-borde p-5">
+    <h2 class="mr-auto text-xl font-extrabold">Tramos registrados</h2>
+    <div class="space-y-1">
+      <label for="f-desde">Desde</label>
+      <input id="f-desde" type="date" [value]="desde()" (change)="desde.set($any($event.target).value); cargarRegistros()" />
+    </div>
+    <div class="space-y-1">
+      <label for="f-hasta">Hasta</label>
+      <input id="f-hasta" type="date" [value]="hasta()" (change)="hasta.set($any($event.target).value); cargarRegistros()" />
+    </div>
+    <div class="space-y-1">
+      <label for="f-agente">Agente</label>
+      <select id="f-agente" [value]="filtroAgente()" (change)="filtroAgente.set($any($event.target).value); cargarRegistros()">
+        <option value="">Todos</option>
+        @for (a of agentes(); track a.id) { <option [value]="a.id">{{ a.nombre }}</option> }
+      </select>
+    </div>
+  </div>
+
+  @if (cargando()) {
+    <div class="space-y-3 p-5" aria-busy="true">
+      @for (i of [1, 2, 3, 4]; track i) { <div class="h-12 animate-pulse rounded-xl bg-morado-suave"></div> }
+    </div>
+  } @else if (!registros().length) {
+    <app-estado-vacio icono="reloj" titulo="Sin tramos en este período" texto="Registra un tramo arriba o importa varios desde Excel." />
+  } @else {
+    <div class="overflow-x-auto p-5">
+      <table class="tabla">
+        <thead>
+          <tr>
+            <th scope="col">Fecha</th>
+            <th scope="col">Agente</th>
+            <th scope="col">Horario</th>
+            <th scope="col">Total</th>
+            <th scope="col">Reparto</th>
+            <th scope="col">Observación</th>
+            <th scope="col"><span class="sr-only">Acciones</span></th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (r of registros(); track r.id) {
+            <tr [class.bg-morado-suave]="r.id === editandoId()">
+              <td class="font-semibold whitespace-nowrap">{{ r.fecha }}</td>
+              <td>{{ nombres().get(r.agenteId) }}</td>
+              <td class="whitespace-nowrap">
+                {{ r.entrada | hhmm }} – {{ r.salida | hhmm }}
+                @if (cruzaMedianoche(r)) { <span title="Termina al día siguiente" class="ml-1 inline-flex align-middle"><app-icono nombre="luna" [tamano]="14" /><span class="sr-only">termina al día siguiente</span></span> }
+              </td>
+              <td class="whitespace-nowrap">{{ duracion(r) | horas }}</td>
+              <td>
+                <div class="flex flex-wrap gap-1">
+                  @if (vigencias().length) {
+                    @let b = reparto(r);
+                    @for (t of tipos; track t) {
+                      @if (b[t]) { <span class="chip {{ colorTipo[t] }}">{{ b[t] | horas }} {{ nombreTipo[t].toLowerCase() }}</span> }
+                    }
+                  }
+                </div>
+              </td>
+              <td class="max-w-48 truncate text-gris">{{ r.observacion || '—' }}</td>
+              <td class="text-right whitespace-nowrap">
+                <button type="button" class="rounded-lg p-2 hover:bg-morado-suave" (click)="editar(r)" aria-label="Editar tramo">
+                  <app-icono nombre="editar" [tamano]="16" />
+                </button>
+                <button type="button" class="rounded-lg p-2 hover:bg-error/60" (click)="eliminar(r)" aria-label="Eliminar tramo">
+                  <app-icono nombre="borrar" [tamano]="16" />
+                </button>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+</section>
+
+@if (importando()) {
+  <app-importador-excel
+    [plantilla]="plantilla"
+    [analizar]="analizar"
+    [guardar]="guardarImportacion"
+    (cerrar)="finImportacion($event)"
+  />
+}

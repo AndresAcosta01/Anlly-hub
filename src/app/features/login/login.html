@@ -1,0 +1,79 @@
+<main class="grid min-h-dvh lg:grid-cols-2">
+  <section class="degradado-hub relative hidden overflow-hidden p-12 lg:flex lg:flex-col lg:justify-between">
+    <div class="absolute -top-24 -right-24 size-96 rounded-full bg-white/30 blur-2xl"></div>
+    <div class="absolute -bottom-32 -left-16 size-[28rem] rounded-full bg-rosado/60 blur-3xl"></div>
+
+    <div class="relative flex items-center gap-3">
+      <span class="grid size-11 place-items-center rounded-2xl bg-negro text-white">
+        <app-icono nombre="brillo" />
+      </span>
+      <span class="text-xl font-extrabold">Anlly Hub</span>
+    </div>
+
+    <div class="relative max-w-md">
+      <h1 class="text-4xl leading-tight font-extrabold">Tus herramientas de operación, en un solo lugar.</h1>
+      <p class="mt-4 text-lg text-negro/80">
+        Nómina con recargos automáticos, horarios y más. Claro, rápido y sin fórmulas de Excel.
+      </p>
+    </div>
+
+    <div class="relative flex gap-3">
+      @for (item of ['Recargos automáticos', 'Carga desde Excel', 'Festivos de Colombia']; track item) {
+        <span class="chip bg-white/70 px-3 py-1.5 backdrop-blur">{{ item }}</span>
+      }
+    </div>
+  </section>
+
+  <section class="flex items-center justify-center bg-white p-6 sm:p-12">
+    <form class="aparecer w-full max-w-sm space-y-6" (ngSubmit)="entrar()">
+      <div class="flex items-center gap-3 lg:hidden">
+        <span class="degradado-hub grid size-11 place-items-center rounded-2xl">
+          <app-icono nombre="brillo" />
+        </span>
+        <span class="text-xl font-extrabold">Anlly Hub</span>
+      </div>
+
+      <div>
+        <h2 class="text-2xl font-extrabold">Bienvenida de nuevo</h2>
+        <p class="mt-1 text-sm text-gris">Ingresa con el correo que te asignó la administradora.</p>
+      </div>
+
+      <div class="space-y-1.5">
+        <label for="correo">Correo</label>
+        <input
+          id="correo"
+          name="correo"
+          type="email"
+          autocomplete="email"
+          required
+          class="w-full"
+          [(ngModel)]="correo"
+        />
+      </div>
+
+      <div class="space-y-1.5">
+        <label for="clave">Contraseña</label>
+        <input
+          id="clave"
+          name="clave"
+          type="password"
+          autocomplete="current-password"
+          required
+          class="w-full"
+          [(ngModel)]="clave"
+        />
+      </div>
+
+      @if (error()) {
+        <p class="flex items-center gap-2 rounded-xl bg-error/60 px-3 py-2 text-sm font-medium" role="alert">
+          <app-icono nombre="error" [tamano]="16" /> {{ error() }}
+        </p>
+      }
+
+      <button type="submit" class="btn btn-primario w-full py-3" [disabled]="cargando()">
+        <app-icono nombre="candado" [tamano]="16" />
+        {{ cargando() ? 'Entrando…' : 'Entrar' }}
+      </button>
+    </form>
+  </section>
+</main>

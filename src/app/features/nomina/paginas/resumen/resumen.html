@@ -1,0 +1,161 @@
+<!-- Filtros -->
+<section class="tarjeta aparecer flex flex-wrap items-end gap-3 p-5">
+  <div class="space-y-1">
+    <label for="p-desde">Desde</label>
+    <input id="p-desde" type="date" [value]="desde()" (change)="cambiarPeriodo($any($event.target).value, hasta())" />
+  </div>
+  <div class="space-y-1">
+    <label for="p-hasta">Hasta</label>
+    <input id="p-hasta" type="date" [value]="hasta()" (change)="cambiarPeriodo(desde(), $any($event.target).value)" />
+  </div>
+  <div class="flex gap-2">
+    <button type="button" class="btn btn-secundario" (click)="quincena()">Quincena actual</button>
+    <button type="button" class="btn btn-secundario" (click)="mesActual()">Mes actual</button>
+  </div>
+  <div class="space-y-1 sm:ml-auto">
+    <label for="p-agente">Agente</label>
+    <select id="p-agente" [value]="filtroAgente()" (change)="filtroAgente.set($any($event.target).value)">
+      <option value="">Todos</option>
+      @for (a of agentes(); track a.id) { <option [value]="a.id">{{ a.nombre }}</option> }
+    </select>
+  </div>
+</section>
+
+@if (cargando()) {
+  <div class="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4" aria-busy="true" aria-label="Cargando resumen">
+    @for (i of [1, 2, 3, 4]; track i) { <div class="h-32 animate-pulse rounded-3xl bg-morado-suave"></div> }
+  </div>
+} @else if (!vigencias().length) {
+  <section class="tarjeta mt-6">
+    <app-estado-vacio icono="ajustes" titulo="Falta configurar los recargos" texto="Crea una vigencia de recargos para poder liquidar.">
+      <a routerLink="../configuracion" class="btn btn-primario">Ir a Configuración</a>
+    </app-estado-vacio>
+  </section>
+} @else {
+  <!-- KPIs -->
+  <div class="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+    <div class="aparecer rounded-3xl bg-negro p-5 text-white shadow-suave">
+      <p class="flex items-center gap-2 text-sm font-semibold text-white/80"><app-icono nombre="dinero" [tamano]="18" /> Total a pagar</p>
+      <p class="mt-3 text-3xl font-extrabold">{{ totales().pagar | pesos }}</p>
+      <p class="mt-1 text-sm text-white/70">{{ filas().length }} agentes en el período</p>
+    </div>
+    <div class="aparecer rounded-3xl bg-azul p-5 shadow-suave">
+      <p class="flex items-center gap-2 text-sm font-semibold"><app-icono nombre="reloj" [tamano]="18" /> Horas trabajadas</p>
+      <p class="mt-3 text-3xl font-extrabold">{{ totales().minutos | horas }}</p>
+      <p class="mt-1 text-sm text-negro/75">Sin almuerzos</p>
+    </div>
+    <div class="aparecer rounded-3xl bg-morado p-5 shadow-suave">
+      <p class="flex items-center gap-2 text-sm font-semibold"><app-icono nombre="luna" [tamano]="18" /> Recargos</p>
+      <p class="mt-3 text-3xl font-extrabold">{{ totales().recargos | pesos }}</p>
+      <p class="mt-1 text-sm text-negro/75">Nocturnos, dominicales y festivos</p>
+    </div>
+    <div class="aparecer rounded-3xl bg-rosado p-5 shadow-suave">
+      <p class="flex items-center gap-2 text-sm font-semibold"><app-icono nombre="alerta" [tamano]="18" /> Horas extra</p>
+      <p class="mt-3 text-3xl font-extrabold">{{ totales().extras | horas }}</p>
+      <p class="mt-1 text-sm text-negro/75">{{ totales().valorExtras | pesos }}</p>
+    </div>
+  </div>
+
+  @if (sinValorHora()) {
+    <p class="mt-4 flex items-center gap-2 rounded-2xl bg-alerta px-4 py-3 text-sm font-medium" role="alert">
+      <app-icono nombre="alerta" [tamano]="18" />
+      {{ sinValorHora() }} agente(s) sin salario ni valor hora: sus valores salen en $0.
+      <a routerLink="../agentes" class="underline">Completar en Agentes</a>
+    </p>
+  }
+
+  <!-- Detalle por agente -->
+  <section class="tarjeta aparecer mt-6 overflow-hidden">
+    <div class="flex flex-wrap items-center justify-between gap-3 border-b border-borde p-5">
+      <h2 class="text-xl font-extrabold">Liquidación por agente</h2>
+      <ul class="flex flex-wrap gap-2 text-xs" aria-label="Leyenda de colores">
+        @for (t of tipos; track t) {
+          <li class="chip {{ colorTipo[t] }}">{{ nombreTipo[t] }}</li>
+        }
+        <li class="chip bg-alerta">Extras</li>
+      </ul>
+    </div>
+
+    @if (!filas().length) {
+      <app-estado-vacio icono="grafica" titulo="Sin horas en este período" texto="Registra tramos o importa un Excel para ver la liquidación.">
+        <a routerLink="../registro" class="btn btn-primario">Registrar horas</a>
+      </app-estado-vacio>
+    } @else {
+      <ul class="divide-y divide-borde">
+        @for (f of filas(); track f.agente.id) {
+          <li>
+            <button
+              type="button"
+              class="grid w-full grid-cols-1 items-center gap-3 px-5 py-4 text-left transition hover:bg-rosado-suave/60 md:grid-cols-12"
+              (click)="alternar(f.agente.id)"
+              [attr.aria-expanded]="abierto() === f.agente.id"
+              [attr.aria-controls]="'detalle-' + f.agente.id"
+            >
+              <div class="md:col-span-3">
+                <p class="font-bold">{{ f.agente.nombre }}</p>
+                <p class="text-xs text-gris">{{ f.agente.documento }} · hora {{ f.valorHora | pesos }}</p>
+              </div>
+              <div class="md:col-span-5">
+                <div class="flex h-3 overflow-hidden rounded-full bg-fondo" role="img" [attr.aria-label]="descripcionBarra(f)">
+                  @for (s of segmentos(f); track s.texto) {
+                    <span class="{{ s.clase }} h-full" [style.width.%]="(s.minutos / f.total) * 100"></span>
+                  }
+                </div>
+                <p class="mt-1 text-xs text-gris">
+                  {{ f.total | horas }} trabajadas
+                  @if (f.totalExtras) { · <b class="text-negro">{{ f.totalExtras | horas }} extra</b> }
+                </p>
+              </div>
+              <div class="text-sm md:col-span-3 md:text-right">
+                <p class="text-xl font-extrabold">{{ f.liquidacion.total | pesos }}</p>
+                <p class="text-xs text-gris">Recargos {{ f.liquidacion.totalRecargos | pesos }} · Extras {{ f.liquidacion.totalExtras | pesos }}</p>
+              </div>
+              <span class="hidden justify-self-end transition-transform md:col-span-1 md:flex" [class.rotate-180]="abierto() === f.agente.id">
+                <app-icono nombre="abajo" />
+              </span>
+            </button>
+
+            @if (abierto() === f.agente.id) {
+              <div [id]="'detalle-' + f.agente.id" class="aparecer grid gap-4 bg-fondo px-5 py-5 lg:grid-cols-2">
+                <div class="rounded-2xl bg-white p-4">
+                  <h3 class="font-bold">Horas dentro de la jornada</h3>
+                  <table class="mt-2 w-full text-sm">
+                    <tbody>
+                      <tr class="border-b border-borde"><td class="py-2">Base (todas las horas)</td><td class="py-2 text-right">{{ f.total - f.totalExtras | horas }}</td><td class="py-2 text-right font-semibold">{{ f.liquidacion.base | pesos }}</td></tr>
+                      <tr class="border-b border-borde"><td class="py-2"><span class="chip {{ colorTipo.nocturna }}">Recargo nocturno</span></td><td class="py-2 text-right">{{ f.minutos.normales.nocturna | horas }}</td><td class="py-2 text-right font-semibold">{{ f.liquidacion.recargoNocturno | pesos }}</td></tr>
+                      <tr class="border-b border-borde"><td class="py-2"><span class="chip {{ colorTipo.festiva }}">Recargo dominical / festivo</span></td><td class="py-2 text-right">{{ f.minutos.normales.festiva | horas }}</td><td class="py-2 text-right font-semibold">{{ f.liquidacion.recargoFestivo | pesos }}</td></tr>
+                      <tr><td class="py-2"><span class="chip {{ colorTipo.nocturnaFestiva }}">Recargo nocturno festivo</span></td><td class="py-2 text-right">{{ f.minutos.normales.nocturnaFestiva | horas }}</td><td class="py-2 text-right font-semibold">{{ f.liquidacion.recargoNocturnoFestivo | pesos }}</td></tr>
+                    </tbody>
+                  </table>
+                </div>
+                <div class="rounded-2xl bg-white p-4">
+                  <h3 class="font-bold">Horas extra</h3>
+                  @if (f.totalExtras) {
+                    <table class="mt-2 w-full text-sm">
+                      <tbody>
+                        @for (t of tipos; track t) {
+                          @if (f.minutos.extras[t]) {
+                            <tr class="border-b border-borde last:border-0">
+                              <td class="py-2">Extra {{ nombreTipo[t].toLowerCase() }}</td>
+                              <td class="py-2 text-right">{{ f.minutos.extras[t] | horas }}</td>
+                              <td class="py-2 text-right font-semibold">{{ f.liquidacion.extras[t] | pesos }}</td>
+                            </tr>
+                          }
+                        }
+                      </tbody>
+                    </table>
+                  } @else {
+                    <p class="mt-2 flex items-center gap-2 text-sm text-gris"><app-icono nombre="ok" [tamano]="16" /> Sin horas extra en el período.</p>
+                  }
+                  <p class="mt-4 flex items-center justify-between rounded-xl bg-morado-suave px-3 py-2 font-bold">
+                    <span>Total</span><span>{{ f.liquidacion.total | pesos }}</span>
+                  </p>
+                </div>
+              </div>
+            }
+          </li>
+        }
+      </ul>
+    }
+  </section>
+}

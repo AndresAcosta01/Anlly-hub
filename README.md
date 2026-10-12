@@ -1,59 +1,54 @@
-# MiProyecto
+# Anlly Hub
 
-This project was generated using [Angular CLI](https://github.com/angular/angular-cli) version 22.2.2.
+Herramientas de operación en la web. Fase 1: **Nómina** (horas ordinarias, nocturnas, dominicales/festivas,
+nocturnas festivas y horas extra) con carga uno a uno o desde Excel. Roles: **admin** (Nómina, Horarios, Usuarios)
+y **supervisor** (herramientas futuras).
 
-## Development server
+Stack: Angular 22 + Tailwind 4, Supabase (base de datos, login y seguridad por fila) y Cloudflare Pages.
+Todo en planes gratuitos.
 
-To start a local development server, run:
+## 1. Crear la base de datos (Supabase, gratis)
 
-```bash
-ng serve
-```
+1. Crea una cuenta en [supabase.com](https://supabase.com) y un proyecto nuevo (región São Paulo, la más cercana).
+2. Ve a **SQL Editor**, pega todo `supabase/migrations/001_base_nomina.sql` y pulsa **Run**.
+3. Ve a **Authentication → Users → Add user → Create new user**, escribe tu correo y contraseña y marca
+   **Auto Confirm User**.
+4. En **SQL Editor** conviértete en admin:
+   ```sql
+   update public.perfiles set rol = 'admin' where correo = 'tu-correo@ejemplo.com';
+   ```
+5. En **Authentication → Sign In / Providers** desactiva **Allow new users to sign up**: solo la admin crea usuarios.
+6. Copia **Project URL** y la **anon public key** (Project Settings → API) en `src/environments/environment.ts`.
+   La anon key es pública por diseño; los datos los protegen las políticas RLS del SQL.
 
-Once the server is running, open your browser and navigate to `http://localhost:4200/`. The application will automatically reload whenever you modify any of the source files.
+> El plan gratuito pausa el proyecto tras 7 días sin uso; se reactiva con un clic en el panel.
 
-## Code scaffolding
-
-Angular CLI includes powerful code scaffolding tools. To generate a new component, run:
-
-```bash
-ng generate component component-name
-```
-
-For a complete list of available schematics (such as `components`, `directives`, or `pipes`), run:
-
-```bash
-ng generate --help
-```
-
-## Building
-
-To build the project run:
+## 2. Correr en local
 
 ```bash
-ng build
+npm install
+npm start          # http://localhost:4200
+npm test           # pruebas de los cálculos y del lector de Excel
 ```
 
-This will compile your project and store the build artifacts in the `dist/` directory. By default, the production build optimizes your application for performance and speed.
+## 3. Publicar (Cloudflare Pages, gratis)
 
-## Running unit tests
+1. Sube el repo a GitHub.
+2. En Cloudflare → **Workers & Pages → Create → Pages → Connect to Git**, elige el repo y configura:
+   - Build command: `npm run build:pages`
+   - Build output directory: `dist/mi-proyecto/browser`
+3. En Supabase → **Authentication → URL Configuration**, pon la URL de Cloudflare como **Site URL**.
 
-To execute unit tests with the [Vitest](https://vitest.dev/) test runner, use the following command:
+## Cómo calcula la nómina
 
-```bash
-ng test
-```
+- Cada **vigencia** de recargos (Nómina → Configuración) aplica desde su fecha; un turno que cruza el cambio se
+  liquida con la vigencia de cada día. Valores iniciales de Colombia: nocturno 19:00–06:00 al 35 %,
+  dominical/festivo 80 % → 90 % desde 01/07/2026, 44 h → 42 h semanales desde 15/07/2026.
+  **Valídalos con tu contador.**
+- Los domingos pagan dominical. Nocturno en festivo = nocturno + festivo.
+- El almuerzo no se paga: se registran dos tramos (antes y después). Los descansos sí se pagan.
+- **Horas extra**: lo que pase de la jornada diaria (por agente o la general) o de las horas semanales, sin contar
+  doble. Extra festiva = festivo + extra diurna/nocturna.
+- Valor hora = valor manual del agente, o salario / (horas semanales ÷ 6 × 30).
 
-## Running end-to-end tests
-
-For end-to-end (e2e) testing, run:
-
-```bash
-ng e2e
-```
-
-Angular CLI does not come with an end-to-end testing framework by default. You can choose one that suits your needs.
-
-## Additional Resources
-
-For more information on using the Angular CLI, including detailed command references, visit the [Angular CLI Overview and Command Reference](https://angular.dev/tools/cli) page.
+Los cálculos están en `src/app/features/nomina/dominio/` (TypeScript puro, con pruebas).

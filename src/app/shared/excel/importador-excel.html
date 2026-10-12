@@ -1,0 +1,136 @@
+<dialog
+  #dialogo
+  class="m-auto w-[min(44rem,calc(100vw-2rem))] rounded-3xl border border-borde bg-white p-0 text-negro shadow-suave backdrop:bg-negro/40 backdrop:backdrop-blur-sm"
+  aria-labelledby="titulo-importador"
+  (cancel)="$event.preventDefault(); terminar()"
+>
+  <div class="degradado-hub flex items-start justify-between gap-4 px-6 py-5">
+    <div>
+      <p class="text-xs font-bold tracking-widest uppercase">Importar desde Excel</p>
+      <h2 id="titulo-importador" class="text-xl font-extrabold">{{ plantilla().nombre }}</h2>
+    </div>
+    <button type="button" class="rounded-xl p-2 hover:bg-white/50" (click)="terminar()" aria-label="Cerrar">
+      <app-icono nombre="cerrar" />
+    </button>
+  </div>
+
+  <div class="max-h-[70vh] space-y-5 overflow-y-auto p-6">
+    @if (error()) {
+      <p class="flex items-start gap-2 rounded-xl bg-error/60 px-4 py-3 text-sm font-medium" role="alert">
+        <app-icono nombre="error" [tamano]="18" /> {{ error() }}
+      </p>
+    }
+
+    @switch (paso()) {
+      @case ('elegir') {
+        <ol class="grid gap-3 text-sm sm:grid-cols-3">
+          <li class="rounded-2xl bg-azul-suave p-3"><b>1.</b> Descarga la plantilla.</li>
+          <li class="rounded-2xl bg-morado-suave p-3"><b>2.</b> Llena la hoja <i>Datos</i> (mira <i>Instrucciones</i>).</li>
+          <li class="rounded-2xl bg-rosado-suave p-3"><b>3.</b> Súbela aquí y revisa antes de guardar.</li>
+        </ol>
+
+        <button type="button" class="btn btn-secundario w-full" (click)="descargarPlantilla()">
+          <app-icono nombre="bajar" [tamano]="18" /> Descargar plantilla
+        </button>
+
+        <label
+          class="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-3xl border-2 border-dashed px-6 py-10 text-center transition"
+          [class.border-morado-fuerte]="arrastrando()"
+          [class.bg-morado-suave]="arrastrando()"
+          [class.border-borde-campo]="!arrastrando()"
+          (dragover)="$event.preventDefault(); arrastrando.set(true)"
+          (dragleave)="arrastrando.set(false)"
+          (drop)="soltar($event)"
+        >
+          <span class="grid size-14 place-items-center rounded-2xl bg-morado text-negro">
+            <app-icono nombre="excel" [tamano]="28" />
+          </span>
+          <span class="font-bold">Arrastra tu archivo o haz clic para elegirlo</span>
+          <span class="text-sm text-gris">Solo .xlsx · máximo 5 MB y 5.000 filas</span>
+          <input type="file" accept=".xlsx" class="sr-only" (change)="elegir($event)" />
+        </label>
+      }
+
+      @case ('leyendo') {
+        <div class="flex flex-col items-center gap-3 py-12" role="status">
+          <span class="size-10 animate-spin rounded-full border-4 border-morado border-t-morado-fuerte"></span>
+          <p class="font-semibold">Leyendo y validando el archivo…</p>
+        </div>
+      }
+
+      @default {
+        @if (analisis(); as a) {
+          <div class="grid gap-3 sm:grid-cols-3">
+            <div class="rounded-2xl bg-exito p-4">
+              <p class="text-3xl font-extrabold">{{ a.nuevos.length }}</p>
+              <p class="flex items-center gap-1 text-sm font-semibold"><app-icono nombre="ok" [tamano]="16" /> Nuevos válidos</p>
+            </div>
+            <div class="rounded-2xl bg-alerta p-4">
+              <p class="text-3xl font-extrabold">{{ a.duplicados.length }}</p>
+              <p class="flex items-center gap-1 text-sm font-semibold"><app-icono nombre="alerta" [tamano]="16" /> Ya existen</p>
+            </div>
+            <div class="rounded-2xl bg-error p-4">
+              <p class="text-3xl font-extrabold">{{ a.errores.length }}</p>
+              <p class="flex items-center gap-1 text-sm font-semibold"><app-icono nombre="error" [tamano]="16" /> Con error</p>
+            </div>
+          </div>
+
+          @if (a.duplicados.length) {
+            <fieldset class="space-y-2 rounded-2xl border border-borde p-4">
+              <legend class="px-1 text-sm font-bold">¿Qué hacemos con los que ya existen?</legend>
+              <label class="flex items-center gap-2 font-medium">
+                <input type="radio" name="duplicados" [checked]="!actualizar()" (change)="actualizar.set(false)" />
+                Omitirlos (no cambiar nada)
+              </label>
+              <label class="flex items-center gap-2 font-medium">
+                <input type="radio" name="duplicados" [checked]="actualizar()" (change)="actualizar.set(true)" />
+                Actualizarlos con los datos del archivo
+              </label>
+            </fieldset>
+          }
+
+          @if (a.errores.length) {
+            <div class="space-y-2">
+              <div class="flex items-center justify-between gap-2">
+                <h3 class="font-bold">Errores por corregir</h3>
+                <button type="button" class="btn btn-secundario py-1.5" (click)="descargarErrores()">
+                  <app-icono nombre="bajar" [tamano]="16" /> Descargar errores
+                </button>
+              </div>
+              <div class="overflow-x-auto rounded-2xl border border-borde">
+                <table class="tabla">
+                  <thead>
+                    <tr><th scope="col">Fila</th><th scope="col">Columna</th><th scope="col">Valor</th><th scope="col">Mensaje</th></tr>
+                  </thead>
+                  <tbody>
+                    @for (e of a.errores.slice(0, 100); track $index) {
+                      <tr>
+                        <td class="font-bold">{{ e.fila }}</td>
+                        <td>{{ e.columna }}</td>
+                        <td class="max-w-32 truncate">{{ e.valor || '—' }}</td>
+                        <td>{{ e.mensaje }}</td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+              @if (a.errores.length > 100) {
+                <p class="text-sm text-gris">Mostrando 100 de {{ a.errores.length }}. Descarga el archivo para verlos todos.</p>
+              }
+            </div>
+          }
+        }
+      }
+    }
+  </div>
+
+  @if (paso() === 'revision' || paso() === 'guardando') {
+    <div class="flex flex-wrap justify-end gap-2 border-t border-borde px-6 py-4">
+      <button type="button" class="btn btn-secundario" (click)="reiniciar()" [disabled]="paso() === 'guardando'">Elegir otro archivo</button>
+      <button type="button" class="btn btn-primario" (click)="importar()" [disabled]="!aImportar() || paso() === 'guardando'">
+        <app-icono nombre="subir" [tamano]="16" />
+        {{ paso() === 'guardando' ? 'Guardando…' : 'Importar ' + aImportar() }}
+      </button>
+    </div>
+  }
+</dialog>

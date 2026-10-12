@@ -1,0 +1,194 @@
+<div class="grid gap-6 xl:grid-cols-5">
+  <!-- Recargos -->
+  <section class="tarjeta aparecer overflow-hidden xl:col-span-3">
+    <div class="flex flex-wrap items-center justify-between gap-4 border-b border-borde p-5">
+      <div>
+        <h2 class="text-xl font-extrabold">Recargos y jornada</h2>
+        <p class="text-sm text-gris">Cada cambio de ley es una nueva vigencia; los turnos se liquidan con la de su fecha.</p>
+      </div>
+      <button type="button" class="btn btn-primario" (click)="abrir()">
+        <app-icono nombre="mas" [tamano]="16" /> Nueva vigencia
+      </button>
+    </div>
+
+    @if (cargando()) {
+      <div class="space-y-3 p-5" aria-busy="true">
+        @for (i of [1, 2]; track i) { <div class="h-28 animate-pulse rounded-2xl bg-morado-suave"></div> }
+      </div>
+    } @else if (!vigencias().length) {
+      <app-estado-vacio icono="ajustes" titulo="Sin recargos configurados" texto="Crea la primera vigencia; viene prellenada con los valores de Colombia.">
+        <button type="button" class="btn btn-primario" (click)="abrir()">Crear vigencia</button>
+      </app-estado-vacio>
+    } @else {
+      <ul class="space-y-3 p-5">
+        @for (v of vigencias(); track v.id) {
+          <li class="rounded-2xl border p-4" [class.border-morado-fuerte]="v.id === vigenteHoy()" [class.bg-morado-suave]="v.id === vigenteHoy()" [class.border-borde]="v.id !== vigenteHoy()">
+            <div class="flex flex-wrap items-center justify-between gap-2">
+              <p class="flex items-center gap-2 font-bold">
+                <app-icono nombre="calendario" [tamano]="18" /> Desde {{ v.vigenteDesde }}
+                @if (v.id === vigenteHoy()) { <span class="chip bg-exito"><app-icono nombre="ok" [tamano]="12" /> Vigente hoy</span> }
+              </p>
+              <div>
+                <button type="button" class="rounded-lg p-2 hover:bg-white" (click)="abrir(v)" [attr.aria-label]="'Editar vigencia desde ' + v.vigenteDesde">
+                  <app-icono nombre="editar" [tamano]="16" />
+                </button>
+                <button type="button" class="rounded-lg p-2 hover:bg-error/60" (click)="eliminarVigencia(v)" [attr.aria-label]="'Eliminar vigencia desde ' + v.vigenteDesde">
+                  <app-icono nombre="borrar" [tamano]="16" />
+                </button>
+              </div>
+            </div>
+            <dl class="mt-3 grid grid-cols-2 gap-2 text-sm sm:grid-cols-4">
+              <div class="rounded-xl bg-white p-2"><dt class="text-xs text-gris">Nocturno</dt><dd class="font-bold">{{ v.inicioNocturno | hhmm }}–{{ v.finNocturno | hhmm }} · {{ v.pctNocturno }} %</dd></div>
+              <div class="rounded-xl bg-white p-2"><dt class="text-xs text-gris">Dominical / festivo</dt><dd class="font-bold">{{ v.pctFestivo }} %</dd></div>
+              <div class="rounded-xl bg-white p-2"><dt class="text-xs text-gris">Nocturno festivo</dt><dd class="font-bold">{{ v.pctNocturno + v.pctFestivo }} %</dd></div>
+              <div class="rounded-xl bg-white p-2"><dt class="text-xs text-gris">Jornada</dt><dd class="font-bold">{{ v.jornadaDiariaHoras }} h/día · {{ v.horasSemanales }} h/sem</dd></div>
+              <div class="rounded-xl bg-white p-2"><dt class="text-xs text-gris">Extra diurna</dt><dd class="font-bold">{{ v.pctExtraDiurna }} %</dd></div>
+              <div class="rounded-xl bg-white p-2"><dt class="text-xs text-gris">Extra nocturna</dt><dd class="font-bold">{{ v.pctExtraNocturna }} %</dd></div>
+              <div class="rounded-xl bg-white p-2"><dt class="text-xs text-gris">Extra festiva diurna</dt><dd class="font-bold">{{ v.pctFestivo + v.pctExtraDiurna }} %</dd></div>
+              <div class="rounded-xl bg-white p-2"><dt class="text-xs text-gris">Extra festiva nocturna</dt><dd class="font-bold">{{ v.pctFestivo + v.pctExtraNocturna }} %</dd></div>
+            </dl>
+          </li>
+        }
+      </ul>
+    }
+  </section>
+
+  <!-- Festivos -->
+  <section class="tarjeta aparecer overflow-hidden xl:col-span-2">
+    <div class="space-y-4 border-b border-borde p-5">
+      <div class="flex items-center justify-between gap-2">
+        <h2 class="text-xl font-extrabold">Festivos</h2>
+        <div class="flex items-center gap-1 rounded-full bg-morado-suave p-1">
+          <button type="button" class="rounded-full px-2 py-1 hover:bg-white" (click)="cambiarAnio(-1)" aria-label="Año anterior">‹</button>
+          <span class="min-w-14 text-center font-bold" aria-live="polite">{{ anio() }}</span>
+          <button type="button" class="rounded-full px-2 py-1 hover:bg-white" (click)="cambiarAnio(1)" aria-label="Año siguiente">›</button>
+        </div>
+      </div>
+      <p class="text-sm text-gris">Los domingos siempre pagan dominical; aquí solo van los festivos.</p>
+      <div class="flex flex-wrap gap-2">
+        <button type="button" class="btn btn-primario" (click)="generarAnio()">
+          <app-icono nombre="brillo" [tamano]="16" /> Generar {{ anio() }}
+        </button>
+        <button type="button" class="btn btn-suave" (click)="importando.set(true)">
+          <app-icono nombre="excel" [tamano]="16" /> Importar
+        </button>
+        <button type="button" class="btn btn-secundario" (click)="descargarPlantilla()" aria-label="Descargar plantilla de festivos">
+          <app-icono nombre="bajar" [tamano]="16" />
+        </button>
+      </div>
+    </div>
+
+    <form class="flex flex-wrap items-end gap-2 border-b border-borde p-5" (ngSubmit)="agregarFestivo()">
+      <div class="space-y-1">
+        <label for="fe-fecha">Fecha</label>
+        <input id="fe-fecha" name="fecha" type="date" required [(ngModel)]="nuevoFestivo.fecha" />
+      </div>
+      <div class="min-w-36 flex-1 space-y-1">
+        <label for="fe-nombre">Nombre</label>
+        <input id="fe-nombre" name="nombre" required class="w-full" [(ngModel)]="nuevoFestivo.nombre" />
+      </div>
+      <button type="submit" class="btn btn-secundario" aria-label="Agregar festivo"><app-icono nombre="mas" [tamano]="16" /></button>
+    </form>
+
+    @if (!cargando() && !festivosAnio().length) {
+      <app-estado-vacio icono="calendario" [titulo]="'Sin festivos en ' + anio()" texto="Genera los festivos de Colombia con un clic y luego ajusta lo que necesites." />
+    } @else {
+      <ul class="max-h-[32rem] divide-y divide-borde overflow-y-auto">
+        @for (f of festivosAnio(); track f.fecha) {
+          <li class="flex items-center gap-3 px-5 py-3 hover:bg-rosado-suave/60">
+            <span class="grid size-11 shrink-0 place-items-center rounded-xl bg-rosado text-center leading-none font-extrabold">
+              {{ f.fecha.slice(8) }}
+            </span>
+            <div class="min-w-0 flex-1">
+              <p class="truncate font-semibold">{{ f.nombre }}</p>
+              <p class="text-xs text-gris capitalize">{{ nombreDia(f.fecha) }}</p>
+            </div>
+            @if (f.origen === 'manual') { <span class="chip bg-azul-suave">manual</span> }
+            <button type="button" class="rounded-lg p-2 hover:bg-error/60" (click)="eliminarFestivo(f)" [attr.aria-label]="'Quitar ' + f.nombre">
+              <app-icono nombre="borrar" [tamano]="16" />
+            </button>
+          </li>
+        }
+      </ul>
+    }
+  </section>
+</div>
+
+<dialog
+  #dialogo
+  class="m-auto w-[min(40rem,calc(100vw-2rem))] rounded-3xl border border-borde bg-white p-0 text-negro shadow-suave backdrop:bg-negro/40 backdrop:backdrop-blur-sm"
+  aria-labelledby="titulo-vigencia"
+>
+  @if (form) {
+    <form (ngSubmit)="guardarVigencia()" #fv="ngForm">
+      <div class="degradado-hub px-6 py-5">
+        <h2 id="titulo-vigencia" class="text-xl font-extrabold">{{ editandoId ? 'Editar vigencia' : 'Nueva vigencia' }}</h2>
+        <p class="text-sm text-negro/80">Valores de referencia de Colombia; valídalos con tu contador.</p>
+      </div>
+      <div class="grid max-h-[60vh] gap-4 overflow-y-auto p-6 sm:grid-cols-3">
+        <div class="space-y-1.5">
+          <label for="v-desde">Vigente desde *</label>
+          <input id="v-desde" name="desde" type="date" required class="w-full" [(ngModel)]="form.vigenteDesde" />
+        </div>
+        <div class="space-y-1.5">
+          <label for="v-ini">Inicio nocturno *</label>
+          <input id="v-ini" name="ini" type="time" required class="w-full" [(ngModel)]="form.inicioNocturno" />
+        </div>
+        <div class="space-y-1.5">
+          <label for="v-fin">Fin nocturno *</label>
+          <input id="v-fin" name="fin" type="time" required class="w-full" [(ngModel)]="form.finNocturno" />
+        </div>
+        <div class="space-y-1.5">
+          <label for="v-noct">% nocturno *</label>
+          <input id="v-noct" name="noct" type="number" min="0" required class="w-full" [(ngModel)]="form.pctNocturno" />
+        </div>
+        <div class="space-y-1.5">
+          <label for="v-fest">% dominical / festivo *</label>
+          <input id="v-fest" name="fest" type="number" min="0" required class="w-full" [(ngModel)]="form.pctFestivo" />
+        </div>
+        <div class="space-y-1.5">
+          <label for="v-ed">% extra diurna *</label>
+          <input id="v-ed" name="ed" type="number" min="0" required class="w-full" [(ngModel)]="form.pctExtraDiurna" />
+        </div>
+        <div class="space-y-1.5">
+          <label for="v-en">% extra nocturna *</label>
+          <input id="v-en" name="en" type="number" min="0" required class="w-full" [(ngModel)]="form.pctExtraNocturna" />
+        </div>
+        <div class="space-y-1.5">
+          <label for="v-jd">Jornada diaria (h) *</label>
+          <input id="v-jd" name="jd" type="number" min="1" max="24" step="0.5" required class="w-full" [(ngModel)]="form.jornadaDiariaHoras" />
+        </div>
+        <div class="space-y-1.5">
+          <label for="v-hs">Horas semanales *</label>
+          <input id="v-hs" name="hs" type="number" min="1" max="72" required class="w-full" [(ngModel)]="form.horasSemanales" />
+        </div>
+        <div class="space-y-1.5">
+          <label for="v-sem">La semana empieza</label>
+          <select id="v-sem" name="sem" class="w-full" [(ngModel)]="form.inicioSemana">
+            <option [ngValue]="1">Lunes</option>
+            <option [ngValue]="0">Domingo</option>
+          </select>
+        </div>
+        <div class="rounded-2xl bg-rosado-suave p-3 text-sm sm:col-span-3">
+          <b>Se calculan solos:</b> nocturno festivo {{ form.pctNocturno + form.pctFestivo }} % · extra festiva diurna
+          {{ form.pctFestivo + form.pctExtraDiurna }} % · extra festiva nocturna {{ form.pctFestivo + form.pctExtraNocturna }} %.
+        </div>
+      </div>
+      <div class="flex justify-end gap-2 border-t border-borde px-6 py-4">
+        <button type="button" class="btn btn-secundario" (click)="cerrarDialogo()">Cancelar</button>
+        <button type="submit" class="btn btn-primario" [disabled]="fv.invalid || guardando()">
+          {{ guardando() ? 'Guardando…' : 'Guardar' }}
+        </button>
+      </div>
+    </form>
+  }
+</dialog>
+
+@if (importando()) {
+  <app-importador-excel
+    [plantilla]="plantilla"
+    [analizar]="analizar"
+    [guardar]="guardarImportacion"
+    (cerrar)="finImportacion($event)"
+  />
+}

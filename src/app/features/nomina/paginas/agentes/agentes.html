@@ -1,0 +1,143 @@
+<section class="tarjeta aparecer overflow-hidden">
+  <div class="flex flex-wrap items-center justify-between gap-4 border-b border-borde p-5">
+    <div>
+      <h2 class="text-xl font-extrabold">Agentes</h2>
+      <p class="text-sm text-gris">{{ agentes().length }} registrados · el valor hora se calcula desde el salario si no lo defines.</p>
+    </div>
+    <div class="flex flex-wrap gap-2">
+      <button type="button" class="btn btn-secundario" (click)="descargarPlantilla()">
+        <app-icono nombre="bajar" [tamano]="16" /> Plantilla
+      </button>
+      <button type="button" class="btn btn-suave" (click)="importando.set(true)">
+        <app-icono nombre="excel" [tamano]="16" /> Importar Excel
+      </button>
+      <button type="button" class="btn btn-primario" (click)="abrir()">
+        <app-icono nombre="mas" [tamano]="16" /> Agregar agente
+      </button>
+    </div>
+  </div>
+
+  @if (cargando()) {
+    <div class="space-y-3 p-5" aria-busy="true" aria-label="Cargando agentes">
+      @for (i of [1, 2, 3, 4]; track i) {
+        <div class="h-12 animate-pulse rounded-xl bg-morado-suave"></div>
+      }
+    </div>
+  } @else if (!agentes().length) {
+    <app-estado-vacio icono="usuarios" titulo="Aún no hay agentes" texto="Agrega tu primer agente o importa la lista completa desde Excel.">
+      <button type="button" class="btn btn-primario" (click)="abrir()"><app-icono nombre="mas" [tamano]="16" /> Agregar agente</button>
+      <button type="button" class="btn btn-suave" (click)="importando.set(true)"><app-icono nombre="excel" [tamano]="16" /> Importar Excel</button>
+    </app-estado-vacio>
+  } @else {
+    <div class="p-5 pb-0">
+      <label for="buscar-agente" class="sr-only">Buscar agente</label>
+      <div class="relative max-w-sm">
+        <span class="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-gris"><app-icono nombre="buscar" [tamano]="16" /></span>
+        <input
+          id="buscar-agente"
+          type="search"
+          placeholder="Buscar por nombre o documento"
+          class="w-full pl-9"
+          [value]="busqueda()"
+          (input)="busqueda.set($any($event.target).value)"
+        />
+      </div>
+    </div>
+    <div class="overflow-x-auto p-5">
+      <table class="tabla">
+        <thead>
+          <tr>
+            <th scope="col">Agente</th>
+            <th scope="col">Documento</th>
+            <th scope="col" class="text-right">Salario base</th>
+            <th scope="col" class="text-right">Valor hora</th>
+            <th scope="col" class="text-right">Jornada diaria</th>
+            <th scope="col">Estado</th>
+            <th scope="col"><span class="sr-only">Acciones</span></th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (a of filtrados(); track a.id) {
+            <tr>
+              <td class="font-semibold">{{ a.nombre }}</td>
+              <td class="text-gris">{{ a.documento }}</td>
+              <td class="text-right">{{ a.salarioBase | pesos }}</td>
+              <td class="text-right">
+                {{ valorHora(a) | pesos }}
+                @if (a.valorHora) { <span class="chip ml-1 bg-rosado-suave">manual</span> }
+              </td>
+              <td class="text-right">{{ a.jornadaDiariaHoras ? a.jornadaDiariaHoras + ' h' : 'General' }}</td>
+              <td>
+                <span class="chip" [class.bg-exito]="a.activo" [class.bg-borde]="!a.activo">
+                  <app-icono [nombre]="a.activo ? 'ok' : 'error'" [tamano]="12" /> {{ a.activo ? 'Activo' : 'Inactivo' }}
+                </span>
+              </td>
+              <td class="text-right whitespace-nowrap">
+                <button type="button" class="rounded-lg p-2 hover:bg-morado-suave" (click)="abrir(a)" [attr.aria-label]="'Editar ' + a.nombre">
+                  <app-icono nombre="editar" [tamano]="16" />
+                </button>
+                <button type="button" class="rounded-lg p-2 hover:bg-error/60" (click)="eliminar(a)" [attr.aria-label]="'Eliminar ' + a.nombre">
+                  <app-icono nombre="borrar" [tamano]="16" />
+                </button>
+              </td>
+            </tr>
+          } @empty {
+            <tr><td colspan="7" class="py-8 text-center text-gris">Ningún agente coincide con “{{ busqueda() }}”.</td></tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+</section>
+
+<dialog
+  #dialogo
+  class="m-auto w-[min(32rem,calc(100vw-2rem))] rounded-3xl border border-borde bg-white p-0 text-negro shadow-suave backdrop:bg-negro/40 backdrop:backdrop-blur-sm"
+  aria-labelledby="titulo-agente"
+>
+  <form (ngSubmit)="guardar()" #f="ngForm">
+    <div class="degradado-hub px-6 py-5">
+      <h2 id="titulo-agente" class="text-xl font-extrabold">{{ editandoId ? 'Editar agente' : 'Nuevo agente' }}</h2>
+    </div>
+    <div class="grid gap-4 p-6 sm:grid-cols-2">
+      <div class="space-y-1.5 sm:col-span-2">
+        <label for="ag-nombre">Nombre completo *</label>
+        <input id="ag-nombre" name="nombre" required class="w-full" [(ngModel)]="form.nombre" />
+      </div>
+      <div class="space-y-1.5">
+        <label for="ag-doc">Documento *</label>
+        <input id="ag-doc" name="documento" required class="w-full" [(ngModel)]="form.documento" />
+      </div>
+      <div class="space-y-1.5">
+        <label for="ag-jornada">Jornada diaria (h)</label>
+        <input id="ag-jornada" name="jornada" type="number" min="1" max="24" step="0.5" class="w-full" placeholder="General" [(ngModel)]="form.jornadaDiariaHoras" />
+      </div>
+      <div class="space-y-1.5">
+        <label for="ag-salario">Salario base</label>
+        <input id="ag-salario" name="salario" type="number" min="0" class="w-full" [(ngModel)]="form.salarioBase" />
+      </div>
+      <div class="space-y-1.5">
+        <label for="ag-valor">Valor hora (opcional)</label>
+        <input id="ag-valor" name="valorHora" type="number" min="0" class="w-full" placeholder="Desde salario" [(ngModel)]="form.valorHora" />
+      </div>
+      <label class="flex items-center gap-2 sm:col-span-2">
+        <input type="checkbox" name="activo" class="size-4 accent-morado-fuerte" [(ngModel)]="form.activo" /> Agente activo
+      </label>
+    </div>
+    <div class="flex justify-end gap-2 border-t border-borde px-6 py-4">
+      <button type="button" class="btn btn-secundario" (click)="cerrarDialogo()">Cancelar</button>
+      <button type="submit" class="btn btn-primario" [disabled]="f.invalid || guardando()">
+        {{ guardando() ? 'Guardando…' : 'Guardar' }}
+      </button>
+    </div>
+  </form>
+</dialog>
+
+@if (importando()) {
+  <app-importador-excel
+    [plantilla]="plantilla"
+    [analizar]="analizar"
+    [guardar]="guardarImportacion"
+    (cerrar)="finImportacion($event)"
+  />
+}

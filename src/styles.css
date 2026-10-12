@@ -1,3 +1,118 @@
 /* You can add global styles to this file, and also import other style files */
 
 @import 'tailwindcss';
+
+@theme {
+  --font-sans: 'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif;
+
+  --color-azul: #a7c7e7;
+  --color-azul-suave: #eaf2fb;
+  --color-azul-fuerte: #2f5f8a;
+  --color-morado: #cdb4db;
+  --color-morado-suave: #f3ecf7;
+  --color-morado-fuerte: #5b3a8c;
+  --color-rosado: #ffc8dd;
+  --color-rosado-suave: #fff0f6;
+  --color-rosado-fuerte: #9c3d63;
+  --color-negro: #1a1a1a;
+  --color-gris: #5f5f6b;
+  --color-borde: #e4dfea;
+  --color-borde-campo: #8a8494;
+  --color-fondo: #faf8fc;
+
+  --color-exito: #c1e1c1;
+  --color-alerta: #ffe5a8;
+  --color-error: #f4b6b6;
+
+  --shadow-suave: 0 1px 2px rgb(26 26 26 / 0.04), 0 8px 24px rgb(91 58 140 / 0.08);
+  --radius-tarjeta: 1.25rem;
+}
+
+@layer base {
+  html {
+    @apply bg-fondo font-sans text-negro antialiased;
+  }
+
+  :focus-visible {
+    outline: 3px solid var(--color-morado-fuerte);
+    outline-offset: 2px;
+    border-radius: 0.5rem;
+  }
+
+  input,
+  select,
+  textarea {
+    @apply rounded-xl border border-borde-campo bg-white px-3 py-2 text-sm text-negro placeholder:text-gris/70 focus:border-morado-fuerte focus:outline-none focus:ring-2 focus:ring-morado;
+  }
+
+  label {
+    @apply text-sm font-semibold text-negro;
+  }
+}
+
+@layer components {
+  .tarjeta {
+    @apply rounded-[var(--radius-tarjeta)] border border-borde bg-white shadow-suave;
+  }
+
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-50;
+  }
+
+  .btn-primario {
+    @apply bg-morado-fuerte text-white hover:bg-[#4a2e74];
+  }
+
+  .btn-secundario {
+    @apply border border-borde bg-white text-negro hover:bg-morado-suave;
+  }
+
+  .btn-suave {
+    @apply bg-azul-suave text-negro hover:bg-azul;
+  }
+
+  .btn-peligro {
+    @apply bg-error text-negro hover:bg-[#ee9f9f];
+  }
+
+  .chip {
+    @apply inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold text-negro;
+  }
+
+  .degradado-hub {
+    background-image: linear-gradient(120deg, #a7c7e7 0%, #cdb4db 50%, #ffc8dd 100%);
+  }
+
+  .tabla {
+    @apply w-full text-left text-sm;
+  }
+
+  .tabla th {
+    @apply bg-morado-suave px-4 py-3 text-xs font-bold tracking-wide text-negro uppercase;
+  }
+
+  .tabla td {
+    @apply border-t border-borde px-4 py-3;
+  }
+
+  .tabla tbody tr {
+    @apply transition-colors hover:bg-rosado-suave/60;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .aparecer {
+    animation: aparecer 0.35s ease-out both;
+  }
+}
+
+@keyframes aparecer {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
